@@ -2,6 +2,7 @@ package com.example.services;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 
 import org.junit.jupiter.api.BeforeEach;
@@ -18,8 +19,9 @@ import com.example.entities.Presentation;
 import com.example.entities.Product;
 
 import static org.mockito.BDDMockito.given;
-
+import static org.mockito.Mockito.when;
 import static org.assertj.core.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 
 /* Test de la capa de servicios. Hay que simular las dependencias de la capa DAO
@@ -91,7 +93,18 @@ class ProductServiceImplTest {
     }
 
     @Test
-    void testFindAll() {
+    @DisplayName("Test para recuperar dos productos creados")
+    void testFindAllProducts() {
+
+        //Given
+        given(productDao.findAll()).willReturn((productsList));
+        
+        // When
+        // when(productServiceImpl.findAll()).thenReturn(productsList);
+        List<Product> productsList = productServiceImpl.findAll();
+        assertEquals(2, productsList.size());
+
+        /* Solucion JP assertEquals(2, productoServiceImpl.findAll().size()); supongo que con la línea when original */
 
     }
 
@@ -125,8 +138,25 @@ class ProductServiceImplTest {
         // como esta todo simulado hay que hacerlo todo a mano.    
 
     // then. Resultado esperado.
-    assertThat(productoGuardado).isNotNull();
-    
+    assertThat(productoGuardado).isNotNull();   
 
     }
+
+    @Test 
+    @DisplayName("Test para recuperar una lista vacia de productos")
+    void testEmptyProductList() {
+
+        // Given
+        given(productDao.findAll()).willReturn(Collections.emptyList());
+
+        // When
+        List<Product> products = productServiceImpl.findAll();
+
+        //Then 
+        assertThat(products).isEmpty();
+
+    }
+
+
+
 }
