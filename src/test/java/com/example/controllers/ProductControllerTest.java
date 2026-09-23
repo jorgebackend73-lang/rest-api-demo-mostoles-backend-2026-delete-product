@@ -224,17 +224,29 @@ class ProductControllerTest {
         El primer file es el producto en un multipart file y el segundo file es la 
         imagen del producto. Hay que meterlo en un try/catch*/
         try {
-            ResultActions response = mockMvc
+            mockMvc
                 .perform(multipart("/products")
                 .file(bytesArrayProduct)
-                .file("file", null));
+                .file("file", null))
 
         // then
 
-            response.andDo(print())
+                .andDo(print())
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.product.name",
                 is(product1.getName())));
+
+        //     ResultActions response = mockMvc
+        //         .perform(multipart("/products")
+        //         .file(bytesArrayProduct)
+        //         .file("file", null));
+
+        // // then
+
+        //     response.andDo(print())
+        //         .andExpect(status().isCreated())
+        //         .andExpect(jsonPath("$.product.name",
+        //         is(product1.getName())));
 
         } catch (Exception e) {
             // TODO Auto-generated catch block
