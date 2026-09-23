@@ -1,5 +1,6 @@
 package com.example.controllers;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
 
 import java.math.BigDecimal;
@@ -16,6 +17,7 @@ import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.MediaType;
+import org.springframework.mock.web.MockMultipartFile;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
@@ -192,6 +194,55 @@ class ProductControllerTest {
     @Test 
     @DisplayName ("Controller Test para Persistir un Producto")
     void testSaveProduct() {
+
+        // given
+        given(productService.save(any(Product.class)))
+            .willAnswer(invocation -> invocation.getArgument(0));
+
+        /* willAnswer para recoger las respuestas y/o escoger alguna de las
+        respuestas que nos puede dar el test, en este caso el argumento 0. */
+
+        // when
+        /* Convertimos el producto recibido, q se va apersistir, a un json, 
+        lo que haría el postman.
+        Hay que convertirlo en una cadena para que el json lo acepte y en tipo string.
+        Esto lo hace ol object mapper autowire majando la biblio de jackson.
+        en la petición debemos mandar el producto como multipart file por un lado, 
+        mokeado con mockMultipartFile y tb como imagen */
+        String jsonStringProduct = objectMapper.writeValueAsString(product1);
+        // producto preparado para enviar al json.
+
+        MockMultipartFile bytesArrayProduct = new MockMultipartFile(
+            "product",
+            null,
+            "application/json",
+            jsonStringProduct.getBytes());
+            // producto preparado y metido en bytesArrayProduct
+
+        /*Hacemos la petición con this.mockMvc.perform(multipart("/productos"))
+        para hacer un multipart file mockeado y sacar el json + el fichero.
+        El primer file es el producto en un multipart file y el segundo file es la 
+        imagen del producto. Hay que meterlo en un try/catch*/
+        try {
+            ResultActions response = mockMvc
+                .perform(multipart("/products")
+                .file(bytesArrayProduct)
+                .file("file", null));
+
+        // then
+
+            response.andDo(print())
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.product.name",
+                is(product1.getName())));
+
+        } catch (Exception e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }
+
+        
+        
 
         
 
