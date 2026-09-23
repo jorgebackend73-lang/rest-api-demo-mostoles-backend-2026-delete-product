@@ -277,6 +277,21 @@ class ProductControllerTest {
     
         }
 
+    @Test
+    @DisplayName("Controller Test Producto no Encontrado")    
+    void testProductoNoEncontrado() throws Exception {
+
+        //given
+        given(productService.findById(20)).willReturn(null);
+
+        //when
+        mockMvc.perform(get("/products/{id}", 20))
+            .andDo(print())
+            .andExpect(status().isNotFound());
+
+        
+    }
+
     }
     
 
