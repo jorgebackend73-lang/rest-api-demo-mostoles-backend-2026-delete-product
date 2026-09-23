@@ -18,11 +18,9 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.BindingResult;
 import org.springframework.validation.ObjectError;
-import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestPart;
@@ -34,7 +32,6 @@ import com.example.models.FileUploadResponse;
 import com.example.services.ProductService;
 import com.example.utilities.FileDownloadUtil;
 import com.example.utilities.FileUploadUtil;
-import com.example.utilities.FileUtil;
 
 import jakarta.transaction.Transactional;
 import jakarta.validation.Valid;
@@ -71,7 +68,6 @@ public class ProductController {
     private final ProductService productService;
     private final FileUploadUtil fileUploadUtil;
     private final FileDownloadUtil fileDownloadUtil;
-    private final FileUtil fileUtil;
 
     /**
      * 
@@ -109,8 +105,7 @@ public class ProductController {
 
         List<Product> products = null;
         Map<String, Object> responseAsMap = new HashMap<>();
-        String nombre = "name";
-        Sort sort = Sort.by(nombre);
+        Sort sort = Sort.by("name");
 
         // Comprobar si en la peticion (request) me han suministrado los parametros page
         // y size
@@ -121,13 +116,13 @@ public class ProductController {
             // Implica devolver los productos paginados, es decir, una pagina de Product
             Page<Product> productPage = productService.findAll(pageable);
             products = productPage.getContent();
-            responseAsMap.put("productos", products);
+            responseAsMap.put("products", products);
 
         } else {
 
             // Devolver los productos ordenados, por nombre (name), por ejemplo
             products = productService.findAll(sort);
-            responseAsMap.put("productos", products);
+            responseAsMap.put("products", products);
         }
 
         return new ResponseEntity<>(responseAsMap, HttpStatus.OK);
@@ -269,7 +264,7 @@ public class ProductController {
              */
 
             FileUploadResponse fileUploadResponse = new FileUploadResponse(
-                    fileCode + imagenDelProducto.getOriginalFilename(),
+                    fileCode + '-' + imagenDelProducto.getOriginalFilename(),
                     "/products/fileDownLoad",
                     imagenDelProducto.getSize());
 
@@ -328,176 +323,4 @@ public class ProductController {
                 .body(resource);
     }
 
-    /**
-     * Metodo que actualiza un producto cuyo id se recibe en la peticion (request),
-     * conjuntamente con el JSON del producto y la imagen del producto, que no es
-     * requerida
-     * 
-     * El metodo es practicamente igual al metodo que persiste un producto con la
-     * imagen
-     * recibida, por lo cual podemos copiar y pegar el contenido del metodo
-     * saveProduct
-     */
-    @PutMapping(value = "/{id}", consumes = "multipart/form-data")
-    @Transactional
-    public ResponseEntity<Map<String, Object>> updateProduct(
-            @Valid @RequestPart Product product,
-            BindingResult result,
-            @RequestPart(name = "file", required = false) MultipartFile imagenDelProducto,
-            @PathVariable int id) throws IOException {
-
-        List<String> mensajesDeError = new ArrayList<>();
-        Map<String, Object> responseAsMap = new HashMap<>();
-        ResponseEntity<Map<String, Object>> responseEntity = null;
-
-        // Primero, comprobar si hay errores en el producto recibido
-        if (result.hasErrors()) {
-            // Recuperamos los errores que tiene el producto recibido y se lo informamos al
-            // que realizo la peticion (request) de persistir el producto
-            List<ObjectError> objectErrors = result.getAllErrors();
-
-            objectErrors.stream().forEach(objectError -> mensajesDeError.add(objectError.getDefaultMessage()));
-
-            responseAsMap.put("El producto tiene los siguientes errores: ",
-                    mensajesDeError);
-            responseAsMap.put("Producto mal formado: ", product);
-
-            responseEntity = new ResponseEntity<>(responseAsMap,
-                    HttpStatus.BAD_REQUEST);
-
-            return responseEntity;
-        }
-
-        // Actualizamos el producto porque si hemos llegado a este punto es que esta
-        // bien
-        // formado
-        // Pero antes vamos a comprobar si hemos recibido imagen del producto, para
-        // guardarla/actualizarla, en cuyo caso debemos, primero, eliminar la imagen
-        // asociada con el producto guardado,
-        // en el sistema de archivo (file system)
-
-        // Recuperando el producto cuyo id hemos recibido como parte de la request
-        Product _productoGuardado = productService.findById(id);
-
-        if (_productoGuardado == null) {
-            responseAsMap.put("mensaje de error: ",
-                    "producto con id " + id + " no encontrado");
-            return new ResponseEntity<Map<String, Object>>(responseAsMap, HttpStatus.NOT_FOUND);
-        }
-
-        if (imagenDelProducto != null && !imagenDelProducto.isEmpty()) {
-
-            /* Comprobar si el producto guardado tiene imagen y eliminarla */
-
-            if (_productoGuardado.getProductImage() != null) {
-
-                // Eliminar la imagen asociada al producto guardado
-                // para lo cual vamos a necesitar de un metodo, en un componente,
-                // que reciba el nombre del fichero de imagen y lo busque
-                // en la carpeta a donde hemos subido las imagenes, y lo elimine
-
-                fileUtil.eliminarArchivo(_productoGuardado.getProductImage());
-
-            }
-
-            /**
-             * Para guardar la imagen del producto, en primer lugar le agregaremos como
-             * prefijo un codigo
-             * alfanumerico (de letras y numeros), generado aleatoriamente a partir de un
-             * metodo que se
-             * encuentre en la biblioteca Apache Commonds Text, que hay que descargar la
-             * dependencia desde
-             * el repositorio central de maven y agregarla al pom.xml
-             */
-
-            /**
-             * Vamos a crear un Componente en un paquete que podria ser
-             * com.example.utilities, y este componente
-             * va a tener un metodo para guardar la imagen recibida en una carpeta del file
-             * system y devolver
-             * un codigo alfanumerico, generado aleatoriamente, que llevara como prefijo el
-             * nombre del fichero
-             * de imagen recibido.
-             * 
-             * Se hara uso intensivo de NIO.2 y se comprobara si la carpeta existe o no,
-             * para crearla
-             */
-
-            String fileCode = fileUploadUtil
-                    .saveFile(imagenDelProducto.getOriginalFilename(), imagenDelProducto);
-
-            product.setProductImage(fileCode + imagenDelProducto.getOriginalFilename());
-
-            /**
-             * Como es una API REST hay que devolver informacion al que ha realizado la
-             * request
-             * respecto a la imagen subida, para lo cual vamos a crear en un paquete llamado
-             * com.example.models un Record, donde devolveremos la informacion de la imagen
-             * subida
-             */
-
-            FileUploadResponse fileUploadResponse = new FileUploadResponse(
-                    fileCode + imagenDelProducto.getOriginalFilename(),
-                    "/products/fileDownLoad",
-                    imagenDelProducto.getSize());
-
-            responseAsMap.put("informacion de la imagen del producto", fileUploadResponse);
-        }
-
-        try {
-            product.setId(id);
-            Product productoPersistido = productService.save(product);
-            responseAsMap.put("mensaje: ", "Producto actualizado exitosamente!!!");
-            responseAsMap.put("producto Actualizado: ", productoPersistido);
-            responseEntity = new ResponseEntity<Map<String, Object>>(responseAsMap, HttpStatus.OK);
-        } catch (DataAccessException e) {
-            responseAsMap.put("Error Grave", "No ha podido ser actualizado el producto " +
-                    " y la causa mas probable es: " +
-                    e.getMostSpecificCause().getMessage());
-            responseEntity = new ResponseEntity<Map<String, Object>>(responseAsMap,
-                    HttpStatus.INTERNAL_SERVER_ERROR);
-        }
-
-        return responseEntity;
-    }
-
-    /**
-     * Metodo para eliminar un producto dado el id
-     */
-    @DeleteMapping("/{id}")
-    @Transactional
-    public ResponseEntity<Map<String, Object>> deleteProducto(@PathVariable Integer id) {
-
-        ResponseEntity<Map<String, Object>> responseEntity = null;
-        var responseAsMap = new HashMap<String, Object>();
-        try {
-            // Comprobar si el producto tiene imagen y la eliminamos del file system
-            Product productToDelete = productService.findById(id);
-
-            if (productToDelete != null && productToDelete.getProductImage() != null) {
-                // Invocamos al metodo que esta en el componente FileUtil
-                // para eliminar el archivo correspondiente a la foto del producto
-                fileUtil.eliminarArchivo(productToDelete.getProductImage());
-            }
-
-            if (productToDelete != null) {
-                productService.delete(productToDelete);
-                String successMessage = "El producto con id " + id + ", ha sido eliminado";
-                responseAsMap.put("mensaje", successMessage);
-                responseEntity = new ResponseEntity<Map<String, Object>>(responseAsMap, HttpStatus.OK);
-            } else {
-                String notFoundMessage = "El producto con id " + id + " no existe";
-                responseAsMap.put("mensaje de error", notFoundMessage);
-                responseEntity = new ResponseEntity<>(responseAsMap, HttpStatus.NOT_FOUND);
-            }
-        } catch (DataAccessException e) {
-            String errorMessage = "No ha podido ser eliminado el producto cuyo id es: " + id
-                    + ", siendo la causa mas probable: " + e.getMostSpecificCause().getMessage();
-            responseAsMap.put("mensaje", errorMessage);
-            responseEntity = new ResponseEntity<Map<String, Object>>(responseAsMap,
-                    HttpStatus.INTERNAL_SERVER_ERROR);
-        }
-
-        return responseEntity;
-    }
 }

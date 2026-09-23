@@ -180,7 +180,7 @@ class ProductControllerTest {
         // then Con $ accedes a las propiedades del .json a las que queremos pedirles el .size
         response.andExpect(status().isOk())
             .andDo(print())
-            .andExpect(jsonPath("$.productos.size()",
+            .andExpect(jsonPath("$.products.size()",
             is(products.size())));
         
 
@@ -251,13 +251,32 @@ class ProductControllerTest {
         } catch (Exception e) {
             // TODO Auto-generated catch block
             e.printStackTrace();
+        }       
+
+    }
+
+
+    @Test
+    @DisplayName("Controller Test para recuperar un producto por su ID")
+    void testRecuperarProductoPorSuID() throws Exception {
+
+        // given
+        int productId = 1;
+
+        given(productService.findById(productId))
+            .willReturn(product1);
+
+        // when
+        mockMvc.perform(get("/products/{id}",
+            productId))
+            .andDo(print())
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$['producto encontrado: '].name",
+            is(product1.getName())));
+    
+    
         }
-
-        
-        
-
-        
 
     }
     
-}
+
