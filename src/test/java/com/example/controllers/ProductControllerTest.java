@@ -6,6 +6,7 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -74,19 +75,25 @@ class ProductControllerTest {
     @Autowired 
     ObjectMapper objectMapper;
 
-    @Test 
-    @DisplayName("Controller Test que recupera todos los productos")
-    void testFindAll() {
+    List<Product> products = new ArrayList<>();
+    Presentation presentation1, presentation2;
+    Product product1, product2;
 
-        // given
-        List<Product> products = new ArrayList<>();
 
-        Presentation presentation1 = Presentation.builder()
+    @BeforeEach
+    void setUp() {
+
+        presentation1 = Presentation.builder()
             .name("decenas")
             .description("Por decenas")
             .build();
 
-        Product product1 = Product.builder()
+        presentation2 = Presentation.builder()
+            .name("unidades")
+            .description("Por unidades")
+            .build();
+
+        product1 = Product.builder()
             .name("Cámara")
             .description("HP Cámara")
             .price(new BigDecimal(500))
@@ -95,12 +102,7 @@ class ProductControllerTest {
             .presentation(presentation1)
             .build();
 
-        Presentation presentation2 = Presentation.builder()
-            .name("unidades")
-            .description("Por unidades")
-            .build();
-
-        Product product2 = Product.builder()
+        product2 = Product.builder()
             .name("Frigorífico")
             .description("General Electric")
             .price(new BigDecimal(2500))
@@ -111,6 +113,50 @@ class ProductControllerTest {
 
         products.add(product1);
         products.add(product2);
+
+    }
+
+    @Test 
+    @DisplayName("Controller Test que recupera todos los productos")
+    void testFindAll() {
+
+        // given
+        // List<Product> products = new ArrayList<>();
+
+        // Presentation presentation1 = Presentation.builder()
+        //     .name("decenas")
+        //     .description("Por decenas")
+        //     .build();
+
+        // Product product1 = Product.builder()
+        //     .name("Cámara")
+        //     .description("HP Cámara")
+        //     .price(new BigDecimal(500))
+        //     .stock(1900)
+        //     .productImage(null)
+        //     .presentation(presentation1)
+        //     .build();
+
+        // Presentation presentation2 = Presentation.builder()
+        //     .name("unidades")
+        //     .description("Por unidades")
+        //     .build();
+
+        // Product product2 = Product.builder()
+        //     .name("Frigorífico")
+        //     .description("General Electric")
+        //     .price(new BigDecimal(2500))
+        //     .stock(3900)
+        //     .productImage(null)
+        //     .presentation(presentation2)
+        //     .build();
+
+        // products.add(product1);
+        // products.add(product2);
+
+        // todo lo anterior comentado aquí lo sacamos a setUp para tenerlos disponibles
+        // para todos los test subsiguientes. Además declaramos las variables justo antes
+        // del setUp.
 
         /*Al hacer una petición al end point nos dará la lista de productos que hemos
         preparado arriba. */
@@ -139,9 +185,13 @@ class ProductControllerTest {
         } catch (Exception e) {
             // TODO Auto-generated catch block
             e.printStackTrace();
-        }
+        }     
 
-        
+    }
+
+    @Test 
+    @DisplayName ("Controller Test para Persistir un Producto")
+    void testSaveProduct() {
 
         
 
