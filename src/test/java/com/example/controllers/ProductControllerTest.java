@@ -30,6 +30,7 @@ import com.example.services.ProductService;
 import com.example.utilities.FileDownloadUtil;
 import com.example.utilities.FileUploadUtil;
 
+import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
 import static org.hamcrest.CoreMatchers.is;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -294,15 +295,15 @@ class ProductControllerTest {
 
     @Test
     @DisplayName("Controller Test Actualizar Product")
-    void testActualizarProduct() {
+    void testActualizarProduct() throws JacksonException, Exception {
 
         // given
 
-        int productoId = 1;
+        int productId = 1;
 
         Presentation presentacionGuardada = Presentation.builder()
                 .description(null)
-                .name("docena")
+                .name("decena")
                 .build();
 
         Product productoGuardado = Product.builder()
@@ -329,7 +330,7 @@ class ProductControllerTest {
                 .build();
 
         // given
-        given(productService.findById(productoId)).willReturn(productoGuardado)
+        given(productService.findById(productId)).willReturn(productoGuardado)
                 .willReturn(productoGuardado);
 
         given(productService.save(any(Product.class)))
@@ -342,10 +343,15 @@ class ProductControllerTest {
         // y por otra la imagen, hay que proceder de manera diferente (muy similar
         // al test de persistir un producto con su imagen)
 
-        ResultActions response = mockMvc.perform(put("/productos/{id}", productoId)
+        ResultActions response = mockMvc.perform(put("/products/{id}", productId)
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(objectMapper.writeValueAsString(productoActualizado))
-                .header("Authorization", this.token));
+                .content(objectMapper.writeValueAsString(productoActualizado)));
+
+        // then
+
+        response.andExpect(status().isOk())
+                .andDo(print())
+                .andExpect(jsonPath("$.product.name", is(productoActualizado.getName())));
 
     }
 
