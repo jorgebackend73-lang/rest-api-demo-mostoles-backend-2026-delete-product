@@ -192,7 +192,7 @@ class ProductControllerTest {
     }
 
     @Test 
-    @DisplayName ("Controller Test para Persistir un Producto")
+    @DisplayName ("Controller Test para Persistir un Product")
     void testSaveProduct() {
 
         // given
@@ -258,7 +258,7 @@ class ProductControllerTest {
 
     @Test
     @DisplayName("Controller Test para recuperar un producto por su ID")
-    void testRecuperarProductoPorSuID() throws Exception {
+    void testRecuperarProductPorSuID() throws Exception {
 
         // given
         int productId = 1;
@@ -278,8 +278,8 @@ class ProductControllerTest {
         }
 
     @Test
-    @DisplayName("Controller Test Producto no Encontrado")    
-    void testProductoNoEncontrado() throws Exception {
+    @DisplayName("Controller Test Product no Encontrado")    
+    void testProductNoEncontrado() throws Exception {
 
         //given
         given(productService.findById(20)).willReturn(null);
@@ -290,6 +290,63 @@ class ProductControllerTest {
             .andExpect(status().isNotFound());
 
         
+    }
+
+    @Test
+    @DisplayName("Controller Test Actualizar Product")
+    void testActualizarProduct() {
+
+        // given
+
+        int productoId = 1;
+
+        Presentation presentacionGuardada = Presentation.builder()
+                .description(null)
+                .name("docena")
+                .build();
+
+        Product productoGuardado = Product.builder()
+                .name("Camara")
+                .description("Resolucion Alta")
+                .price(new BigDecimal(2000.00))
+                .stock(40)
+                .presentation(presentacionGuardada)
+                .productImage("perro.jpeg")
+                .build();
+
+        Presentation presentacionActualizada = Presentation.builder()
+                .description(null)
+                .name("unidad")
+                .build();
+
+        Product productoActualizado = Product.builder()
+                .name("HDCamara")
+                .description("Muy Alta Resolucion")
+                .price(new BigDecimal(2500.00))
+                .stock(400)
+                .presentation(presentacionActualizada)
+                .productImage("perro.jpeg")
+                .build();
+
+        // given
+        given(productService.findById(productoId)).willReturn(productoGuardado)
+                .willReturn(productoGuardado);
+
+        given(productService.save(any(Product.class)))
+                .willAnswer(invocation -> invocation.getArgument(0));
+
+        // when
+
+        // Si todo el producto se recibe en el cuerpo de la peticion procedemos
+        // de la forma siguiente, de lo contrario, si por una parte va el producto
+        // y por otra la imagen, hay que proceder de manera diferente (muy similar
+        // al test de persistir un producto con su imagen)
+
+        ResultActions response = mockMvc.perform(put("/productos/{id}", productoId)
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(productoActualizado))
+                .header("Authorization", this.token));
+
     }
 
     }
