@@ -2,6 +2,7 @@ package com.example.controllers;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.doNothing;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -354,6 +355,68 @@ class ProductControllerTest {
                 .andExpect(jsonPath("$.product.name", is(productoActualizado.getName())));
 
     }
+
+
+    // La forma según el team R&J para actulizar producto con imagen:
+    @Test
+        @DisplayName("Test de controller para actualizar un producto")
+        void testUpdateProduct() throws JacksonException, Exception {
+
+                // Given
+                int productId = 1;
+
+                Presentation presentacionGuardada = presentation1;
+                Presentation presentacionActualizada = presentation2;
+
+                Product productoGuardado = product1;
+                Product productoActualizado = product2;
+
+                given(productService.findById(productId)).willReturn(productoGuardado)
+                                .willReturn(productoGuardado);
+                given(productService.save(any(Product.class)))
+                                .willAnswer(invocation -> invocation.getArgument(0));
+
+                // when
+                String jsonStringProduct = objectMapper.writeValueAsString(productoActualizado);
+
+                MockMultipartFile bytesArrayProduct = new MockMultipartFile("product",
+                                null,
+                                "application/json",
+                                jsonStringProduct.getBytes());
+
+                ResultActions response = this.mockMvc.perform(multipart("/products/{id}", productId)
+                                .with(request -> { // esta es la madre del cordero para que funcione la imagen.
+                                        request.setMethod("PUT");
+                                        return request;
+                                })
+                                .file("file", null)
+                                .file(bytesArrayProduct));
+
+                // then
+                response.andDo(print())
+                                .andExpect(status().isOk())
+                                .andExpect(jsonPath("$['producto actualizado: '].name", is(productoActualizado.getName())))
+                                .andExpect(jsonPath("$['producto actualizado: '].description",
+                                                is(productoActualizado.getDescription())));
+        }
+
+    @Test
+    @DisplayName("Controller Test para eliminar un producto")
+    void testDeleteProduct() throws Exception {
+
+        //given
+        int ProductId = 1;
+
+        given(productService.findById(ProductId)).willReturn(product1);
+        doNothing().when(productService).delete(product1);
+        // Consultar el repo de Julian, pero el product0 no va a funcionar supongo en mi caso 1 y 2
+        
+        //when
+        mockMvc.perform(delete("/product/{id}", ProductId))
+            .andExpect(status().isOk());
+    
+    }
+
 
     }
     

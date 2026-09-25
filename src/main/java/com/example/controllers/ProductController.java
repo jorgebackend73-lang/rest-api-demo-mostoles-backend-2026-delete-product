@@ -34,6 +34,7 @@ import com.example.models.FileUploadResponse;
 import com.example.services.ProductService;
 import com.example.utilities.FileDownloadUtil;
 import com.example.utilities.FileUploadUtil;
+import com.example.utilities.FileUtil;
 
 import jakarta.transaction.Transactional;
 import jakarta.validation.Valid;
@@ -70,6 +71,7 @@ public class ProductController {
     private final ProductService productService;
     private final FileUploadUtil fileUploadUtil;
     private final FileDownloadUtil fileDownloadUtil;
+    private final FileUtil fileUtil;
 
     /**
      * 
@@ -339,60 +341,143 @@ public class ProductController {
      * 
      */
 
-    @PutMapping("/{id}")
+    // @PutMapping("/{id}")
+    // @Transactional
+    // public ResponseEntity<Map<String, Object>> updateProducto(@Valid @RequestBody Product product,
+    //         BindingResult results, @PathVariable Integer id) {
+
+    //     ResponseEntity<Map<String, Object>> responseEntity = null;
+    //     Map<String, Object> responseAsMap = new HashMap<>();
+
+    //     // Comprobar si el producto recibido en el cuerpo de la peticion tiene errores
+    //     if (results.hasErrors()) {
+
+    //         // Recuperar todos los errores que tiene el producto
+    //         List<ObjectError> objectErrors = results.getAllErrors();
+
+    //         // Hay que recorrer la lista de ObjectError para recuperar los mensajes de error
+    //         // por defecto que le voy a mostrar al cliente que ha hecho la peticion,
+    //         // es decir, que ha enviado el producto mal formado
+
+    //         // Los mensajes de error tienen que ser almacenados en una lista donde cada
+    //         // elemento de la lista
+    //         // sea un String
+
+    //         List<String> mensajesError = new ArrayList<>();
+
+    //         objectErrors.stream().forEach(objectError -> mensajesError.add(objectError.getDefaultMessage()));
+
+    //         responseAsMap.put("errores", mensajesError);
+    //         responseAsMap.put("product", product);
+
+    //         responseEntity = new ResponseEntity<Map<String, Object>>(responseAsMap, HttpStatus.BAD_REQUEST);
+
+    //         return responseEntity;
+
+    //     }
+
+    //     /**
+    //      * Si no hay errores vamos a actualizar el producto recibido y devolver
+    //      * informacion al respecto como se requiere para una API REST
+    //      */
+
+    //     try {
+    //         product.setId(id);
+    //         Product productoModoficado = productService.save(product);
+    //         String mensaje = "El producto ha sido modificado exitosamente";
+    //         responseAsMap.put("mensaje", mensaje);
+    //         responseAsMap.put("product", productoModoficado);
+    //         responseEntity = new ResponseEntity<Map<String, Object>>(responseAsMap, HttpStatus.OK);
+    //     } catch (DataAccessException e) {
+    //         String errorMessage = "El producto no se pudo modificar y la causa mas probable es: "
+    //                 + e.getMostSpecificCause();
+    //         responseAsMap.put("error", errorMessage);
+    //         responseEntity = new ResponseEntity<Map<String, Object>>(responseAsMap, HttpStatus.INTERNAL_SERVER_ERROR);
+    //     }
+
+    //     return responseEntity;
+    // }
+
+    // then
+
+    @PutMapping(value = "/{id}", consumes = "multipart/form-data")
     @Transactional
-    public ResponseEntity<Map<String, Object>> updateProducto(@Valid @RequestBody Product product,
-            BindingResult results, @PathVariable Integer id) {
-
-        ResponseEntity<Map<String, Object>> responseEntity = null;
+    public ResponseEntity<Map<String, Object>> updateProduct(
+            @Valid @RequestPart Product product, BindingResult result,
+            @RequestPart(name = "file", required = false) MultipartFile imagenDelProducto,
+            @PathVariable(name = "id", required = true) int product_id) throws IOException {
+        List<String> mensajesDeError = new ArrayList<>();
         Map<String, Object> responseAsMap = new HashMap<>();
+        ResponseEntity<Map<String, Object>> responseEntity = null;
+        // comprobar errores de validación
+        if (result.hasErrors()) {
+            List<ObjectError> objectErrors = result.getAllErrors();
+            objectErrors.stream().forEach(objectError -> {
+                mensajesDeError.add(objectError.getDefaultMessage());
+            });
 
-        // Comprobar si el producto recibido en el cuerpo de la peticion tiene errores
-        if (results.hasErrors()) {
-
-            // Recuperar todos los errores que tiene el producto
-            List<ObjectError> objectErrors = results.getAllErrors();
-
-            // Hay que recorrer la lista de ObjectError para recuperar los mensajes de error
-            // por defecto que le voy a mostrar al cliente que ha hecho la peticion,
-            // es decir, que ha enviado el producto mal formado
-
-            // Los mensajes de error tienen que ser almacenados en una lista donde cada
-            // elemento de la lista
-            // sea un String
-
-            List<String> mensajesError = new ArrayList<>();
-
-            objectErrors.stream().forEach(objectError -> mensajesError.add(objectError.getDefaultMessage()));
-
-            responseAsMap.put("errores", mensajesError);
-            responseAsMap.put("product", product);
-
+            responseAsMap.put("respuesta de error: ", mensajesDeError);
+            responseAsMap.put("producto mal formado: ", product);
             responseEntity = new ResponseEntity<Map<String, Object>>(responseAsMap, HttpStatus.BAD_REQUEST);
-
             return responseEntity;
-
         }
 
         /**
-         * Si no hay errores vamos a actualizar el producto recibido y devolver
-         * informacion al respecto como se requiere para una API REST
+         * Persisto (guardo) el producto porque está bien formado
+         * compruebo si hay imagen para guardarla
+         * y en tal caso debo eliminar la imagen del producto
          */
-
-        try {
-            product.setId(id);
-            Product productoModoficado = productService.save(product);
-            String mensaje = "El producto ha sido modificado exitosamente";
-            responseAsMap.put("mensaje", mensaje);
-            responseAsMap.put("product", productoModoficado);
-            responseEntity = new ResponseEntity<Map<String, Object>>(responseAsMap, HttpStatus.OK);
-        } catch (DataAccessException e) {
-            String errorMessage = "El producto no se pudo modificar y la causa mas probable es: "
-                    + e.getMostSpecificCause();
-            responseAsMap.put("error", errorMessage);
-            responseEntity = new ResponseEntity<Map<String, Object>>(responseAsMap, HttpStatus.INTERNAL_SERVER_ERROR);
+        Product productoParaActualizar = productService.findById(product_id);
+        if (productoParaActualizar == null) {
+            responseAsMap.put("mensaje de error: ", "producto con id: " + product_id + " no encontrado.");
+            return new ResponseEntity<Map<String, Object>>(responseAsMap, HttpStatus.NOT_FOUND);
         }
 
+        if (imagenDelProducto != null && !imagenDelProducto.isEmpty()) {
+            /**
+             * comprobar si productoParaActualizar tiene imagen y si es así eliminarla
+             */
+            if (productoParaActualizar.getProductImage() != null) {
+                // Eliminar la imagen asociada
+                fileUtil.eliminarArchivo(productoParaActualizar.getProductImage());
+            }
+            /**
+             * agregar prefijo: código alfanumérico aleatorio con método Apache Commons text
+             * (Lang3) (dependencia Maven -> pom.xml)
+             *
+             * * Beans vs Components:
+             * Ahora crearemos un componente en el paquete utilities. Dentro habrá un método
+             * para guardar la imagen en una carpeta y
+             * devuelve un código aleatorio que llevará como prefijo el nombre del fichero
+             * original
+             * 
+             * NIO.2 (entrada salida no bloqueante) si no existe la carpeta la creará.
+             */
+            String fileCode = fileUploadUtil.saveFile(imagenDelProducto.getOriginalFilename(), imagenDelProducto);
+            product.setProductImage(fileCode + '-' + imagenDelProducto.getOriginalFilename());
+            /**
+             * en el paquete models crearemos un record donde devolveremos al frontend la
+             * info de la imagen
+             */
+            FileUploadResponse fileUploadResponse = new FileUploadResponse(
+                    fileCode + '-' + imagenDelProducto.getOriginalFilename(),
+                    "/products/fileDownload",
+                    imagenDelProducto.getSize());
+            responseAsMap.put("información de la imagen del producto", fileUploadResponse);
+        }
+        try {
+            product.setId(product_id);
+            Product productoAGuardar = productService.save(product);
+            responseAsMap.put("mensaje: ", "Producto actualizado exitósamente!");
+            responseAsMap.put("producto actualizado: ", productoAGuardar);
+            responseEntity = new ResponseEntity<Map<String, Object>>(responseAsMap, HttpStatus.OK);
+        } catch (DataAccessException e) {
+            String errorMessage = "Error grave al actualizar el producto y la causa más probable es "
+                    + e.getMostSpecificCause().getMessage();
+            // e.getStackTrace();
+            responseAsMap.put("Error grave: ", errorMessage);
+            responseEntity = new ResponseEntity<Map<String, Object>>(responseAsMap, HttpStatus.INTERNAL_SERVER_ERROR);
+        }
         return responseEntity;
     }
 
